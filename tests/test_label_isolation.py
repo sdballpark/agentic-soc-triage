@@ -21,7 +21,7 @@ import pytest
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent / "soc_triage"
 
 FORBIDDEN_PREFIX = "soc_triage.evaluation"
-GUARDED_SUBPACKAGES = ("pipeline", "corpus", "enrichment")
+GUARDED_SUBPACKAGES = ("pipeline", "corpus", "enrichment", "api")
 
 
 def _module_paths(subpackage: str) -> list[Path]:
