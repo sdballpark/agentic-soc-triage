@@ -256,26 +256,52 @@ def t1078_malicious(rng: random.Random, ts: datetime) -> TemplateResult:
 
 
 def t1078_benign(rng: random.Random, ts: datetime) -> TemplateResult:
-    src = env.address_by_ip("198.51.100.14")
+    """Two shapes, and the difference matters for the abstention measure.
+
+    Half these alerts come from the corporate VPN, which enrichment rates
+    clean. The evidence is sufficient and abstaining would be a cop-out.
+
+    The other half come from an address with no intel on file. MFA succeeded
+    and the account is an ordinary user, so closing is still correct, but a
+    reasonable analyst could decline to decide. Those are marked
+    abstention_acceptable, which is what stops the abstention metric from
+    having nothing to measure.
+    """
+    thin_evidence = rng.random() < 0.5
+    src = env.address_by_ip("203.0.113.88" if thin_evidence else "198.51.100.14")
     user = rng.choice([u for u in env.USERS if u.account_type is env.AccountType.STANDARD])
     host = rng.choice([h for h in env.HOSTS if h.department == user.department] or list(env.HOSTS))
+
+    if thin_evidence:
+        rationale = (
+            f"A standard user completed an MFA logon from {src.ip_addr}, an address "
+            "enrichment has no intelligence on. Nothing indicates compromise and the "
+            "authentication was multi-factor, so closing is correct. But the source is "
+            "unverified rather than known-good, so declining to decide is defensible."
+        )
+    else:
+        rationale = (
+            "The source address is the corporate VPN concentrator, which enrichment "
+            "rates clean. The account is a standard user in the department that owns the "
+            "target host, and the logon completed with MFA. New-source detections fire on "
+            "remote staff routinely."
+        )
+
     return TemplateResult(
         event=_auth_event(
             ts, user, severity="Low", result="Success", sub_type="RemoteInteractive",
             src=src, LogonMethod="Multi factor authentication",
-            SrcRiskLevel=5, TargetHostname=host.hostname,
+            SrcRiskLevel=35 if thin_evidence else 5, TargetHostname=host.hostname,
             RuleName="Interactive logon from a previously unseen source address",
-            ThreatCategory="InitialAccess", ThreatRiskLevel=15, ThreatConfidence=30,
+            ThreatCategory="InitialAccess",
+            ThreatRiskLevel=30 if thin_evidence else 15,
+            ThreatConfidence=20 if thin_evidence else 30,
         ),
         title="Interactive logon from a previously unseen source address",
         severity="Low",
         entity_summary=f"{user.username} / {src.ip_addr} / MFA",
-        rationale=(
-            f"The source address is the corporate VPN concentrator, which enrichment "
-            "rates clean. The account is a standard user in the department that owns the "
-            "target host, and the logon completed with MFA. New-source detections fire on "
-            "remote staff routinely."
-        ),
+        rationale=rationale,
+        abstention_acceptable=thin_evidence,
     )
 
 
