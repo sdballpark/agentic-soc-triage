@@ -1,0 +1,20 @@
+# Alert contract and validation
+pydantic
+
+# Orchestration
+langgraph
+langchain-core
+
+# Model access over an OpenAI-compatible endpoint (llama.cpp / Ollama / vLLM)
+openai
+
+# Enrichment calls and MCP gateway calls
+httpx
+
+# Ingress webhook (the Tines / Logic Apps contract)
+fastapi
+uvicorn
+
+# Gates
+pytest
+ruff

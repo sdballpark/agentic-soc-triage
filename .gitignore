@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Model artifacts (served on host, never vendored)
+*.gguf
+*.safetensors
+models/
+
+# Local eval output
+runs/
+*.log
