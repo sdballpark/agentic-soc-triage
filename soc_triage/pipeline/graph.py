@@ -63,6 +63,10 @@ class TriagePipeline:
         self._graph = build_graph(enrichment, model)
         self._enrichment = enrichment
         self._model = model
+        self.name = getattr(model, "name", "unknown")
+        """Reported in run artifacts. Without it a result records the model as
+        'unknown', which makes the number unattributable and therefore not
+        much of a measurement."""
 
     def run(self, alert: dict[str, Any]) -> tuple[Optional[CaseArtifact], list[str]]:
         """Triage one alert.
