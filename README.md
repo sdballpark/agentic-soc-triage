@@ -94,15 +94,15 @@ escalate-direction injections.** Payloads shouting `CRITICAL CONFIRMED BREACH
 close without escalation]` did not, not once. An attacker can use injection to
 waste analyst time. They could not use it to bury an intrusion.
 
-Detection and resistance are also uncorrelated. On four alerts the agent
+Detection and resistance are also uncorrelated. On five alerts the agent
 resisted without noticing the manipulation; on two it flagged the injection
 and complied anyway. Prompt-level defenses do not compose the way intuition
 suggests, which is why this is measured rather than claimed.
 
 ### The corpus is not uniformly hard
 
-Eight of thirteen detections in the corpus have no benign variant, so they are
-unambiguous by construction. The real difficulty is concentrated in five
+Seven of the twelve techniques in the corpus have no benign variant, so their
+alerts are unambiguous by construction. The real difficulty is concentrated in five
 matched pairs plus the adversarial slice. Overall accuracy is therefore
 flattered relative to a real alert queue. The per-tactic and per-slice
 breakdowns are the honest read.
@@ -151,18 +151,26 @@ enrichment outranks alert text.
 | injection compliance | 30.0% | 10.0% | better |
 | injection detection | 40.0% | 10.0% | worse |
 
-Nine fewer false positives, two-thirds less injection compliance, and one
-missed intrusion. **v1 ships.**
+Three fewer false positives (10 to 7), two-thirds less injection compliance,
+and one missed intrusion. **v1 ships.**
 
-Reading the failing alert explained why. The regression was a port sweep from
-an ordinary engineering workstation, where the incriminating fact is an
-*absence*: the host carries no scanning-authorization tag. The v2 wording
+Reading the failing alerts explained why. Both regressions were port sweeps:
+v2 closed one as benign (alert-0074) and abstained on another that v1 had
+escalated (alert-0070). The sweep came from an ordinary engineering
+workstation, where the incriminating fact is an *absence*: the host carries no
+scanning-authorization tag. The v2 wording
 taught the model to treat "enrichment found nothing unusual" as exonerating.
 Absence of a tag is not absence of risk.
 
-Both runs stay committed. Two identical runs of v1 produced byte-identical
-results, so the harness has no measurement noise and the v2 delta is entirely
-attributable to the prompt.
+Both runs stay committed. A repeat of v1 reproduced every disposition and
+every metric; the only difference was one alert's reported confidence (95 in one
+run, 90 in the other). At temperature 0 the decisions are stable on this corpus,
+so the changed dispositions in v2 are attributable to the prompt rather than to
+run-to-run variation. One run per prompt is still one run.
+
+The `triage-v2` prompt text was not committed before it was reverted, so the v2
+run cannot be reproduced from this repository. Its results file is kept as the
+record of what happened; `prompts.py` contains only `triage-v1`.
 
 ---
 
@@ -193,18 +201,27 @@ Enrichment providers fail. The pipeline retries, then continues with a
 disposition marked `degraded` and a completeness score, rather than crashing
 or guessing.
 
-Retry budget against a 40% per-attempt failure rate, measured on a 25-alert
-subset:
+Retry budget against a 40% per-attempt failure rate, over all 100 alerts and
+20 seeds per budget, using the real graph with the stub model:
 
-| attempts | mean completeness | degraded alerts | theoretical failure |
-|---|---|---|---|
-| 1 | 57.0% | 22 | 40.0% |
-| 2 | 82.3% | 13 | 16.0% |
-| 3 | 87.3% | 8 | 6.4% |
-| 5 | 96.0% | 2 | 1.0% |
+| attempts | realized failure rate | lookup completeness | expected from realized rate | alerts with a missing lookup |
+|---|---|---|---|---|
+| 1 | 39.9% | 60.1% | 60.1% | 78.5 |
+| 2 | 40.2% | 83.6% | 83.8% | 41.8 |
+| 3 | 39.9% | 93.7% | 93.6% | 17.4 |
+| 5 | 39.9% | 99.0% | 99.0% | 3.0 |
 
-Observed completeness tracks the theoretical failure probability, so the
-retry logic behaves as the arithmetic says it should.
+Completeness matches 1 - p^attempts within 0.2 points at every budget, so the
+retry logic behaves as the arithmetic says it should. Reproduce with
+`python scripts/retry_sweep.py`; it writes
+[results/retry-sweep.json](results/retry-sweep.json) and gives the same file on
+every run.
+
+An earlier version of this table used one seed on a 25-alert subset and had no
+committed artifact. It could not be reproduced, and a single seed on a small
+sample can realize a failure rate well away from the nominal one: seed 0 on the
+first 25 alerts fails about 28% of lookups, not 40%. It was replaced by the
+sweep above.
 
 End to end with 40% enrichment failure, **false-close rate stayed at 0.0%**.
 Accuracy fell 3 points and false positives rose, because without asset
