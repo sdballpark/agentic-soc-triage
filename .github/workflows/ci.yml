@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    # No GPU here. The model step uses StubModel, so this checks the corpus,
+    # the graph wiring and the published retry results, not model accuracy.
+    # Model results come from local runs and are committed under results/.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - name: Install pinned dependencies
+        run: pip install -r requirements.lock
+      - name: Test suite
+        run: python -m pytest tests/ -q
+      - name: Graph runs end to end with the stub model
+        run: python scripts/run_eval.py --mode stub --limit 10 --no-write --quiet
+      - name: Retry sweep reproduces the committed results
+        run: |
+          python scripts/retry_sweep.py
+          git diff --exit-code results/retry-sweep.json

@@ -305,6 +305,11 @@ python scripts/compare_runs.py results/qwen2.5-14b.json results/my-run.json
 
 A full 100-alert run takes about 13 minutes on an RTX 4090, roughly 7.8 seconds per alert.
 
+CI runs on every push without a GPU: the test suite, the graph end to end with the
+stub model, and the retry sweep, which fails the build if its output differs from
+the committed `results/retry-sweep.json`. Model accuracy is not measured in CI; those
+runs happen locally and their results are committed.
+
 Serve it:
 
 ```bash
